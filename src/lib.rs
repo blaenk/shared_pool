@@ -10,8 +10,6 @@ use std::error;
 
 use syncbox::{ThreadPool, TaskBox};
 
-mod macros;
-
 static POOL: AtomicUsize = ATOMIC_USIZE_INIT;
 
 const UNINITIALIZED: usize = 0;
@@ -71,27 +69,20 @@ fn to_pool(ptr: usize) -> &'static ThreadPool<Box<TaskBox>> {
 pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
     let ptr = POOL.load(Ordering::SeqCst);
 
-    // I think this is OK because initializing right here
-    // would atomically set it to INITIALIZING
-    // thereby preventing races during initialization
-    if ptr == UNINITIALIZED || ptr == INITIALIZING {
+    let ptr = if ptr == UNINITIALIZED || ptr == INITIALIZING {
         try!(init(num_cpus::get()));
 
-        let ptr = POOL.load(Ordering::SeqCst);
-
-        assert!(ptr != UNINITIALIZED && ptr != INITIALIZING);
-
-        Ok(to_pool(ptr).clone())
+        ptr
     } else {
-        Ok(to_pool(ptr).clone())
-    }
+        ptr
+    };
+
+    Ok(to_pool(ptr).clone())
 }
 
 #[test]
 fn test_pool() {
-    use syncbox::Run;
-
     init(4).unwrap();
 
-    let pool: ThreadPool<Box<TaskBox>> = pool().unwrap();
+    let _pool: ThreadPool<Box<TaskBox>> = pool().unwrap();
 }
