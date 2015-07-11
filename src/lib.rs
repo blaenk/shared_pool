@@ -102,9 +102,16 @@ pub fn get_or_init(size: usize) -> Result<ThreadPool<Box<TaskBox>>, InitPoolErro
     Ok(pool.clone())
 }
 
-#[test]
-fn test_pool() {
-    init(4).unwrap();
+#[cfg(test)]
+mod tests {
+    use syncbox::{ThreadPool, TaskBox};
 
-    let _pool: ThreadPool<Box<TaskBox>> = get().unwrap();
+    use super::{init, get};
+
+    #[test]
+    fn test_pool() {
+        init(4).unwrap();
+
+        let _pool: ThreadPool<Box<TaskBox>> = get().unwrap();
+    }
 }
