@@ -1,5 +1,4 @@
 extern crate libc;
-extern crate eventual;
 extern crate syncbox;
 extern crate num_cpus;
 
@@ -68,7 +67,7 @@ fn to_pool(ptr: usize) -> &'static ThreadPool<Box<TaskBox>> {
     unsafe { mem::transmute(ptr) }
 }
 
-pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
+pub fn get() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
     let ptr = POOL.load(Ordering::SeqCst);
 
     let ptr = if ptr == UNINITIALIZED || ptr == INITIALIZING {
@@ -86,5 +85,5 @@ pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
 fn test_pool() {
     init(4).unwrap();
 
-    let _pool: ThreadPool<Box<TaskBox>> = pool().unwrap();
+    let _pool: ThreadPool<Box<TaskBox>> = get().unwrap();
 }

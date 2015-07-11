@@ -7,6 +7,3 @@ authors = ["Jorge Israel Peña <jorge.israel.p@gmail.com>"]
 syncbox = "*"
 libc = "*"
 num_cpus = "*"
-
-[dependencies.eventual]
-path = "../eventual"
