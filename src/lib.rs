@@ -12,50 +12,56 @@ use syncbox::{ThreadPool, TaskBox};
 
 mod macros;
 
-static POOL: AtomicUsize = ATOMIC_USIZE_INIT;
-
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 
 macro_rules! pool {
     () => {
-        pool!(POOL)
+        pool!(DEFAULT)
     };
 
-    ($statik:path) => {
-        $crate::pool_from(&$statik)
+    ($handle:path) => {
+        $crate::pool_from($handle)
     }
 }
 
 macro_rules! init_pool {
     ($size:expr) => {
-        init_pool!(POOL, $size)
+        init_pool!(DEFAULT, $size)
     };
 
-    ($statik:path, $size:expr) => {
-        $crate::init_from(&$statik, $size).and_then(|_| {
-            unsafe {
-                assert_eq!(libc::atexit(shutdown), 0);
-            }
+    ($handle:ident, $size:expr) => {{
+        pub static $handle: AtomicUsize = ATOMIC_USIZE_INIT;
 
-            extern fn shutdown() {
+        mod ns {
+            use std::mem;
+            use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+            use syncbox::{ThreadPool, TaskBox};
+
+            pub extern fn shutdown() {
                 // Set to INITIALIZING to prevent re-initialization after
-                let logger = $statik.swap(INITIALIZING, Ordering::SeqCst);
+                let pool = ::$handle.swap($crate::INITIALIZING, Ordering::SeqCst);
 
                 unsafe {
                     // trigger drop
-                    mem::transmute::<usize, Box<ThreadPool<Box<TaskBox>>>>(logger);
+                    mem::transmute::<usize, Box<ThreadPool<Box<TaskBox>>>>(pool);
                 }
+            }
+        }
+
+        $crate::init_from(&$handle, $size).and_then(|_| {
+            unsafe {
+                assert_eq!(libc::atexit(ns::shutdown), 0);
             }
 
             Ok(())
         })
-    }
+    }}
 }
 
-pub fn init(size: usize) -> Result<(), InitPoolError> {
-    init_pool!(POOL, size)
-}
+// pub fn init(size: usize) -> Result<(), InitPoolError> {
+//     init_pool!(DEFAULT, size)
+// }
 
 pub fn init_from(handle: &'static AtomicUsize, size: usize) -> Result<(), InitPoolError> {
     if handle.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst)
@@ -95,7 +101,7 @@ fn to_pool(ptr: usize) -> &'static ThreadPool<Box<TaskBox>> {
 }
 
 pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
-    pool!(POOL)
+    pool!(DEFAULT)
 }
 
 pub fn pool_from(handle: &'static AtomicUsize)
@@ -124,7 +130,7 @@ fn test_pool() {
 
     // init(1).unwrap();
 
-    init(4).unwrap();
+    init_pool!(TEST, 4).unwrap();
 
     let pool: ThreadPool<Box<TaskBox>> = pool().unwrap();
 
