@@ -17,7 +17,7 @@ static POOL: AtomicUsize = ATOMIC_USIZE_INIT;
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 
-fn init(size: usize) -> Result<(), InitPoolError> {
+pub fn init(size: usize) -> Result<(), InitPoolError> {
     if POOL.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst)
        != UNINITIALIZED {
         return Err(InitPoolError(()));
@@ -68,42 +68,30 @@ fn to_pool(ptr: usize) -> &'static ThreadPool<Box<TaskBox>> {
     unsafe { mem::transmute(ptr) }
 }
 
-fn pool() -> ThreadPool<Box<TaskBox>> {
+pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
     let ptr = POOL.load(Ordering::SeqCst);
 
     // I think this is OK because initializing right here
     // would atomically set it to INITIALIZING
     // thereby preventing races during initialization
     if ptr == UNINITIALIZED || ptr == INITIALIZING {
-        init(num_cpus::get()).unwrap();
+        try!(init(num_cpus::get()));
 
         let ptr = POOL.load(Ordering::SeqCst);
 
         assert!(ptr != UNINITIALIZED && ptr != INITIALIZING);
 
-        to_pool(ptr).clone()
+        Ok(to_pool(ptr).clone())
     } else {
-        to_pool(ptr).clone()
+        Ok(to_pool(ptr).clone())
     }
 }
 
 #[test]
 fn test_pool() {
-    use syncbox::{Run, TaskBox, ThreadPool};
+    use syncbox::Run;
 
-    // init(1).unwrap();
+    init(4).unwrap();
 
-    let pool: ThreadPool<Box<TaskBox>> = pool();
-
-    for n in (1 .. 6) {
-        pool.run(Box::new(move || {
-            if n == 3 {
-                ::std::thread::sleep_ms(1000);
-            }
-
-            println!("PROCESSING {}", n);
-        }));
-    }
-
-    ::std::thread::sleep_ms(5000);
+    let pool: ThreadPool<Box<TaskBox>> = pool().unwrap();
 }
