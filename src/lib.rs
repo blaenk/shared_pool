@@ -24,12 +24,12 @@ const INITIALIZING: usize = 1;
 // }
 
 macro_rules! init_pool {
-    ($size:expr) => {
-        init_pool!(DEFAULT, $size)
-    };
+    // ($size:expr) => {
+    //     init_pool!(DEFAULT, $size)
+    // };
 
-    ($handle:ident, $size:expr) => {{
-        pub static $handle: AtomicUsize = ATOMIC_USIZE_INIT;
+    ($handle:path, $name:ident, $size:expr) => {{
+        // pub static $handle: AtomicUsize = ATOMIC_USIZE_INIT;
 
         mod ns {
             use std::mem;
@@ -38,7 +38,7 @@ macro_rules! init_pool {
 
             pub extern fn shutdown() {
                 // Set to INITIALIZING to prevent re-initialization after
-                let pool = ::$handle.swap($crate::INITIALIZING, Ordering::SeqCst);
+                let pool = ::$name.swap($crate::INITIALIZING, Ordering::SeqCst);
 
                 unsafe {
                     // trigger drop
@@ -122,25 +122,29 @@ pub fn pool_from(handle: &'static AtomicUsize)
     }
 }
 
+static TEST: AtomicUsize = ATOMIC_USIZE_INIT;
+
 #[test]
 fn test_pool() {
     use syncbox::{Run, TaskBox, ThreadPool};
 
+    // pub static $handle: AtomicUsize = ATOMIC_USIZE_INIT;
+
     // init(1).unwrap();
 
-    init_pool!(TEST, 4).unwrap();
+    init_pool!(TEST, TEST, 4).unwrap();
 
-    let pool: ThreadPool<Box<TaskBox>> = pool(&TEST).unwrap();
+    // let pool: ThreadPool<Box<TaskBox>> = pool(&TEST).unwrap();
 
-    for n in (1 .. 6) {
-        pool.run(Box::new(move || {
-            if n == 3 {
-                ::std::thread::sleep_ms(1000);
-            }
+    // for n in (1 .. 6) {
+    //     pool.run(Box::new(move || {
+    //         if n == 3 {
+    //             ::std::thread::sleep_ms(1000);
+    //         }
 
-            println!("PROCESSING {}", n);
-        }));
-    }
+    //         println!("PROCESSING {}", n);
+    //     }));
+    // }
 
-    ::std::thread::sleep_ms(5000);
+    // ::std::thread::sleep_ms(5000);
 }
