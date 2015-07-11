@@ -10,20 +10,18 @@ use std::error;
 
 use syncbox::{ThreadPool, TaskBox};
 
-mod macros;
-
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 
-macro_rules! pool {
-    () => {
-        pool!(DEFAULT)
-    };
+// macro_rules! pool {
+//     () => {
+//         pool!(DEFAULT)
+//     };
 
-    ($handle:path) => {
-        $crate::pool_from($handle)
-    }
-}
+//     ($handle:path) => {
+//         $crate::pool_from($handle)
+//     }
+// }
 
 macro_rules! init_pool {
     ($size:expr) => {
@@ -100,9 +98,9 @@ fn to_pool(ptr: usize) -> &'static ThreadPool<Box<TaskBox>> {
     unsafe { mem::transmute(ptr) }
 }
 
-pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
-    pool!(DEFAULT)
-}
+// pub fn pool() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
+//     pool!(DEFAULT)
+// }
 
 pub fn pool_from(handle: &'static AtomicUsize)
     -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
@@ -132,7 +130,7 @@ fn test_pool() {
 
     init_pool!(TEST, 4).unwrap();
 
-    let pool: ThreadPool<Box<TaskBox>> = pool().unwrap();
+    let pool: ThreadPool<Box<TaskBox>> = pool(&TEST).unwrap();
 
     for n in (1 .. 6) {
         pool.run(Box::new(move || {
