@@ -1,6 +1,5 @@
 extern crate libc;
 extern crate syncbox;
-extern crate num_cpus;
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use std::mem;
@@ -13,6 +12,10 @@ static POOL: AtomicUsize = ATOMIC_USIZE_INIT;
 
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
+
+/// Initialize the shared pool.
+///
+/// Returns an error if the pool has already been initialized
 
 pub fn init(size: usize) -> Result<(), InitPoolError> {
     let val = POOL.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst);
@@ -46,7 +49,8 @@ pub fn init(size: usize) -> Result<(), InitPoolError> {
     }
 }
 
-/// The type returned by `init` if `init` has already been called.
+/// An error representing an attempt to initialize the pool more than once.
+
 #[allow(missing_copy_implementations)]
 #[derive(Debug)]
 pub struct InitPoolError(());
@@ -62,23 +66,40 @@ impl error::Error for InitPoolError {
     fn description(&self) -> &str { "init() called multiple times" }
 }
 
-#[inline]
-fn to_pool(ptr: usize) -> &'static ThreadPool<Box<TaskBox>> {
-    unsafe { mem::transmute(ptr) }
+/// Retrieve an instance of the shared pool if it has been initialized.
+
+pub fn get() -> Option<ThreadPool<Box<TaskBox>>> {
+    let ptr = POOL.load(Ordering::SeqCst);
+
+    if ptr == UNINITIALIZED || ptr == INITIALIZING {
+        None
+    } else {
+        let pool: &'static ThreadPool<Box<TaskBox>> = unsafe {
+            mem::transmute(ptr)
+        };
+
+        Some(pool.clone())
+    }
 }
 
-pub fn get() -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
+/// Retrieve an instance of the shared pool if it exists, otherwise
+/// initialize one and retrieve an instance to it.
+
+pub fn get_or_init(size: usize) -> Result<ThreadPool<Box<TaskBox>>, InitPoolError> {
     let ptr = POOL.load(Ordering::SeqCst);
 
     let ptr = if ptr == UNINITIALIZED || ptr == INITIALIZING {
-        try!(init(num_cpus::get()));
-
+        try!(init(size));
         ptr
     } else {
         ptr
     };
 
-    Ok(to_pool(ptr).clone())
+    let pool: &'static ThreadPool<Box<TaskBox>> = unsafe {
+        mem::transmute(ptr)
+    };
+
+    Ok(pool.clone())
 }
 
 #[test]
