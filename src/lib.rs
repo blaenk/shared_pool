@@ -13,22 +13,22 @@ use syncbox::{ThreadPool, TaskBox};
 const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 
-// macro_rules! pool {
-//     () => {
-//         pool!(DEFAULT)
-//     };
+macro_rules! pool {
+    () => {
+        pool!(DEFAULT)
+    };
 
-//     ($handle:path) => {
-//         $crate::pool_from($handle)
-//     }
-// }
+    ($name:ident) => {
+        $crate::pool_from(&::$name)
+    }
+}
 
 macro_rules! init_pool {
     // ($size:expr) => {
     //     init_pool!(DEFAULT, $size)
     // };
 
-    ($handle:path, $name:ident, $size:expr) => {{
+    ($name:ident, $size:expr) => {{
         // pub static $handle: AtomicUsize = ATOMIC_USIZE_INIT;
 
         mod ns {
@@ -47,7 +47,7 @@ macro_rules! init_pool {
             }
         }
 
-        $crate::init_from(&$handle, $size).and_then(|_| {
+        $crate::init_from(&::$name, $size).and_then(|_| {
             unsafe {
                 assert_eq!(libc::atexit(ns::shutdown), 0);
             }
@@ -132,19 +132,15 @@ fn test_pool() {
 
     // init(1).unwrap();
 
-    init_pool!(TEST, TEST, 4).unwrap();
+    init_pool!(TEST, 4).unwrap();
 
-    // let pool: ThreadPool<Box<TaskBox>> = pool(&TEST).unwrap();
+    let pool: ThreadPool<Box<TaskBox>> = pool!(TEST).unwrap();
 
-    // for n in (1 .. 6) {
-    //     pool.run(Box::new(move || {
-    //         if n == 3 {
-    //             ::std::thread::sleep_ms(1000);
-    //         }
-
-    //         println!("PROCESSING {}", n);
-    //     }));
-    // }
+    for n in (1 .. 6) {
+        pool.run(Box::new(move || {
+            println!("> {}", n);
+        }));
+    }
 
     // ::std::thread::sleep_ms(5000);
 }
