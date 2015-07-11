@@ -16,12 +16,14 @@ const UNINITIALIZED: usize = 0;
 const INITIALIZING: usize = 1;
 
 pub fn init(size: usize) -> Result<(), InitPoolError> {
-    if POOL.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst)
-       != UNINITIALIZED {
+    let val = POOL.compare_and_swap(UNINITIALIZED, INITIALIZING, Ordering::SeqCst);
+
+    if val != UNINITIALIZED {
         return Err(InitPoolError(()));
     }
 
     let pool = Box::new(ThreadPool::fixed_size(size as u32));
+
     let pool = unsafe {
         mem::transmute::<Box<ThreadPool<Box<TaskBox>>>, usize>(pool)
     };
