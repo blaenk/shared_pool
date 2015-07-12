@@ -120,11 +120,11 @@ static CUSTOM_POOL: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[test]
 fn test_default_pool() {
-    use syncbox::{Run, TaskBox, ThreadPool};
+    use syncbox::Run;
 
     init_pool!(4).unwrap();
 
-    let pool: ThreadPool<Box<TaskBox>> = pool!().unwrap();
+    let pool = pool!().unwrap();
 
     pool.run(Box::new(move || {
         println!("in pool");
@@ -132,7 +132,7 @@ fn test_default_pool() {
 
     init_pool!(CUSTOM_POOL, 4).unwrap();
 
-    let pool: ThreadPool<Box<TaskBox>> = pool!(CUSTOM_POOL).unwrap();
+    let pool = pool!(CUSTOM_POOL).unwrap();
 
     pool.run(Box::new(move || {
         println!("in pool");
